@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	    <meta charset="UTF-8">
+	    <title>简单图像地图</title>
+	</head>
+	<body>
+	    <img src="https://www.hzu.edu.cn/_upload/article/images/5a/05/46196c1c4a1b9abc300d5ff63b03/e6e3b2ae-f38f-43dd-a9c7-e7346fca96e2.jpg"
+	         usemap="#mymap"
+	         width="400"
+	         height="300">
+	    <map name="mymap">
+	        <!-- 圆形：太阳 -->
+	        <area shape="circle" coords="-0,0,200"
+	              href="https://www.hzu.edu.cn/_upload/article/images/69/24/73d039ff42da92e32073a175222b/da5904eb-4383-4017-a01e-28fd040c879b.jpg"
+	              title="圆形区域">
+	
+	        <!-- 矩形：地球 -->
+	        <area shape="rect" coords="100,100,300,200"
+	              href="https://www.hzu.edu.cn/_upload/article/images/a4/0d/aec43dd5427bb5a1934416d0c80b/acb5a0aa-08c4-490e-a31c-4b890eed8447.jpg"
+	              title="矩形区域">
+	
+	        <!-- 多边形 -->
+	        <area shape="poly" coords="350,-100,320,200,380,200"
+	              href="https://www.hzu.edu.cn/_upload/article/images/94/65/2d26e4f4439abf511ab15e83ee4e/0fefd40c-c71a-42a1-9f17-1698984e56b0.jpg"
+	              title="多边形区域">
+	    </map>
+	</body>
+	</html>
+</html>
