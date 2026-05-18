@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>高中地理教学：潮汐规律交互演示 | 天体视角 + 海平面动态模拟</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0a1f2e 0%, #07161f 100%);
+            font-family: 'Segoe UI', 'Roboto', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 主卡片容器 */
+        .geography-card {
+            max-width: 1400px;
+            width: 100%;
+            background: rgba(10, 25, 35, 0.65);
+            backdrop-filter: blur(2px);
+            border-radius: 56px;
+            padding: 20px 25px 30px 25px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1);
+            border: 1px solid rgba(72, 187, 255, 0.3);
+        }
+
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 1.9rem;
+            text-align: center;
+            color: #d9f0ff;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 5px #003344;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        h1 small {
+            font-size: 0.9rem;
+            background: #1e3a47;
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-weight: normal;
+            color: #b9e6ff;
+        }
+        .sub {
+            text-align: center;
+            color: #8bbcd9;
+            margin-top: -8px;
+            margin-bottom: 20px;
+            border-bottom: 1px dashed #2f6c8a;
+            display: inline-block;
+            width: auto;
+            padding-bottom: 8px;
+        }
+
+        /* 主要布局: 天体canvas + 右侧面板 */
+        .main-demo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .canvas-container {
+            flex: 3;
+            min-width: 550px;
+            background: #021018;
+            border-radius: 48px;
+            padding: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+            border: 1px solid #2f88aa;
+        }
+        canvas#tideCanvas {
+            display: block;
+            width: 100%;
+            background: radial-gradient(circle at 30% 20%, #021e2c, #000a10);
+            border-radius: 40px;
+            margin: 0 auto;
+        }
+
+        /* 右侧控制面板 */
+        .info-panel {
+            flex: 1.2;
+            min-width: 260px;
+            background: rgba(12, 32, 44, 0.8);
+            backdrop-filter: blur(8px);
+            border-radius: 44px;
+            padding: 18px 20px;
+            border: 1px solid #2c839e;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.3);
+        }
+
+        .tide-type-box {
+            background: #02212e;
+            border-radius: 28px;
+            padding: 12px 18px;
+            text-align: center;
+            margin-bottom: 25px;
+            border-left: 6px solid #3bc0fc;
+        }
+        .tide-type {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #ffd966;
+            text-shadow: 0 0 6px #ffae00;
+        }
+        .angle-info {
+            background: #0a2a38;
+            border-radius: 28px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 1rem;
+            color: #cae9ff;
+            border-bottom: 1px dotted #2c6e8a;
+            padding: 5px 0;
+        }
+        .highlight {
+            color: #f9b81b;
+            font-weight: bold;
+        }
+        .explain-text {
+            font-size: 0.85rem;
+            line-height: 1.45;
+            color: #c0e0f0;
+            margin: 18px 0 12px;
+            background: #0b2f3d70;
+            padding: 12px;
+            border-radius: 24px;
+        }
+        .slider-container {
+            margin: 15px 0;
+        }
+        label {
+            font-weight: 600;
+            color: #b0defa;
+            display: flex;
+            justify-content: space-between;
+        }
+        input {
+            width: 100%;
+            margin-top: 6px;
+            cursor: pointer;
+            background: #1f5268;
+            height: 4px;
+            border-radius: 5px;
+        }
+        button {
+            background: #1f6d8f;
+            border: none;
+            color: white;
+            font-size: 1rem;
+            padding: 8px 16px;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: bold;
+            margin: 5px 5px 0 0;
+            box-shadow: 0 2px 5px black;
+        }
+        button:hover {
+            background: #2d8eb3;
+            transform: scale(0.97);
+        }
+        .speed-control {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        /* 新增：海平面动态观测区域 */
+        .sea-level-section {
+            background: #021018cc;
+            border-radius: 48px;
+            padding: 18px 22px;
+            margin-top: 15px;
+            border: 1px solid #3fa2c2;
+            backdrop-filter: blur(4px);
+        }
+        .sea-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+            color: #d4f1ff;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .sea-title span:first-child {
+            background: #144d5e;
+            padding: 5px 16px;
+            border-radius: 60px;
+        }
+        .sea-level-canvas-wrap {
+            background: #05222e;
+            border-radius: 32px;
+            padding: 10px;
+            box-shadow: inset 0 0 8px #00000030, 0 6px 12px rgba(0,0,0,0.3);
+        }
+        canvas#seaLevelCanvas {
+            display: block;
+            width: 100%;
+            background: #eef7ff10;
+            border-radius: 24px;
+            margin: 0 auto;
+        }
+        .sea-note {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: #aad4f0;
+            padding: 0 8px;
+        }
+        .tide-range-indicator {
+            background: #0d3f4e;
+            border-radius: 32px;
+            padding: 5px 12px;
+            font-size: 0.85rem;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #528aa5;
+            margin-top: 25px;
+        }
+        @media (max-width: 800px) {
+            .canvas-container { min-width: 320px; }
+            .info-panel { min-width: 240px; }
+            h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="geography-card">
+    <h1>🌊 潮汐规律 · 双重视角模拟 <small>月球引力 + 太阳影响</small></h1>
+    <div style="text-align: center; margin-bottom: 10px;"><span class="sub">✨ 天体引潮力 → 潮汐椭球 → 海平面实时波动 ✨</span></div>
+
+    <div class="main-demo">
+        <!-- Canvas 天体动画区域 (潮汐椭球) -->
+        <div class="canvas-container">
+            <canvas id="tideCanvas" width="900" height="600" style="width:100%; height:auto; max-width:900px; aspect-ratio:900/600"></canvas>
+        </div>
+
+        <!-- 右侧交互+教学面板 -->
+        <div class="info-panel">
+            <div class="tide-type-box">
+                <div style="font-size:0.9rem;">🌙 当前潮汐类型</div>
+                <div class="tide-type" id="tideTypeLabel">--</div>
+                <div style="font-size:0.75rem; margin-top:5px;" id="tideDesc">月球-太阳引力叠加效果</div>
+            </div>
+            <div class="angle-info">
+                <div class="info-row"><span>🌕 月球公转角度</span><span id="moonAngleDisplay" class="highlight">0°</span></div>
+                <div class="info-row"><span>☀️ 太阳方向</span><span>固定 → 右侧 0°</span></div>
+                <div class="info-row"><span>⚡ 日月夹角</span><span id="sunMoonAngle" class="highlight">0°</span></div>
+                <div class="info-row"><span>🌊 潮汐振幅系数</span><span id="tideStrength" class="highlight">100%</span></div>
+            </div>
+
+            <!-- 控制组件 -->
+            <div class="slider-container">
+                <label>🌙 月球公转角度 <span style="color:#ffbc6e;">(手动调节/动画)</span></label>
+                <input type="range" id="moonSlider" min="0" max="360" step="1" value="0">
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button id="playBtn">▶ 自动公转</button>
+                <button id="pauseBtn">⏸️ 暂停</button>
+                <button id="resetBtn">🔄 重置角度(0°)</button>
+            </div>
+            <div class="speed-control">
+                <span>⏩ 公转速度</span>
+                <input type="range" id="speedSlider" min="0.3" max="4" step="0.1" value="1.5">
+                <span id="speedVal">1.5°/帧</span>
+            </div>
+            <div class="explain-text">
+                📖 <strong>地理潮汐原理</strong><br>
+                • 月球引力引起地球水体“潮汐椭球”，形成<span style="color:#FFD966">两个高潮区</span> (正对月球 & 背对月球)。<br>
+                • 地球自转 → 同一地点每天两次涨落，周期约12时25分。<br>
+                • 太阳引潮力调制：<span style="color:#FFB347">朔望(日月夹角0°/180°) → 大潮</span> (潮差最大)<br>
+                • <span style="color:#80D8FF">上/下弦月(夹角90°) → 小潮</span> (潮差最小)<br>
+                • 右侧动态展示<span style="color:#7bc5ae;">“潮汐水圈”变形幅度</span>，凸起方向跟随月球，强度随日月夹角变化。
+            </div>
+        </div>
+    </div>
+
+    <!-- ========= 新增：海平面动态观测模块 ========= -->
+    <div class="sea-level-section">
+        <div class="sea-title">
+            <span>📍 海平面动态观测 · 模拟港口潮位变化</span>
+            <span class="tide-range-indicator" id="tideRangeHint">🌊 当前潮差: 中等</span>
+        </div>
+        <div class="sea-level-canvas-wrap">
+            <canvas id="seaLevelCanvas" width="800" height="200" style="width:100%; height:auto; max-width:100%; background: #021a24; border-radius: 24px;"></canvas>
+        </div>
+        <div class="sea-note">
+            <span>📉 低潮位</span>
+            <span>🌊 实时水位波动 (每约2.5秒一个涨落周期，振幅随大潮/小潮变化)</span>
+            <span>📈 高潮位</span>
+        </div>
+        <div class="sea-note" style="margin-top: 5px; justify-content: center; gap: 20px;">
+            <span>🔵 水位曲线 → 直观展示一天两次涨落</span>
+            <span>⚡ 大潮时波峰↗↘幅度增大，小潮时平缓</span>
+        </div>
+    </div>
+
+    <footer>🌍 教学演示 | 潮汐椭球方向随月球公转 | 右侧海平面动态显示潮差调制（半月周期）</footer>
+</div>
+
+<script>
+    (function(){
+        // ----- 获取canvas元素 -----
+        const canvas = document.getElementById('tideCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 固定尺寸 (宽900 高600)
+        canvas.width = 900;
+        canvas.height = 600;
+        let width = 900, height = 600;
+
+        // 天文常量与几何参数 (视觉比例)
+        const centerX = width/2;
+        const centerY = height/2;
+        const earthRadius = 70;          // 地球半径(像素)
+        const waterBase = 22;             // 基准水层厚度(超过地球半径的额外厚度，表现水圈)
+        // 最大潮汐振幅(使水圈在月球/反月球方向凸起明显)  最小振幅(小潮)
+        const MAX_TIDE_AMP = 18;           // 大潮时额外凸起增量(px)
+        const MIN_TIDE_AMP = 5;            // 小潮时凸起增量
+        
+        // 月球轨道半径(距离地心距离)
+        const moonOrbitRadius = 170;
+        const moonRadius = 14;
+        // 太阳位置 (固定右侧远处)
+        const sunAngleFixed = 0;            // 角度0° (弧度0, 正右方)
+        const sunDistance = 340;            // 视觉距离
+        const sunRadius = 32;
+        
+        // 动画标志与参数
+        let autoRotate = true;               // 自动公转
+        let currentMoonAngle = 0;            // 月球公转角度(度数) 0°指向右侧(与太阳同向)
+        let animationId = null;
+        let speedDegPerFrame = 1.5;           // 每帧旋转度数 (可由滑块控制)
+        
+        // DOM 元素绑定
+        const moonSlider = document.getElementById('moonSlider');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValSpan = document.getElementById('speedVal');
+        const tideTypeLabel = document.getElementById('tideTypeLabel');
+        const tideDescSpan = document.getElementById('tideDesc');
+        const moonAngleDisplay = document.getElementById('moonAngleDisplay');
+        const sunMoonAngleSpan = document.getElementById('sunMoonAngle');
+        const tideStrengthSpan = document.getElementById('tideStrength');
+        const tideRangeHint = document.getElementById('tideRangeHint');
+        
+        // ========= 海平面模拟相关变量 =========
+        const seaCanvas = document.getElementById('seaLevelCanvas');
+        const seaCtx = seaCanvas.getContext('2d');
+        seaCanvas.width = 800;
+        seaCanvas.height = 200;
+        let seaWidth = 800, seaHeight = 200;
+        
+        // 潮汐水位相位（模拟地球自转引起的半日潮，周期约2~3秒视觉舒适）
+        let tidePhase = 0;
+        const PHASE_SPEED = 0.028;          // 每帧增加弧度，约2.5秒一个完整涨落周期（60帧下）
+        // 最大潮差显示幅度(像素，水位柱高度变化范围)
+        const MAX_TIDE_RANGE_PX = 56;         // 高潮与低潮之间的最大像素差（大潮时）
+        const MIN_TIDE_RANGE_PX = 18;         // 小潮时的最小潮差像素
+        
+        // 实时水位值（-1..1 比例，用于绘图）
+        let currentWaterRatio = 0;
+        
+        // 辅助函数: 根据月球角度获取潮汐振幅系数 (0~1)
+        function getTideAmplitudeFactor(moonAngleDeg) {
+            let delta = Math.abs(moonAngleDeg - sunAngleFixed);
+            delta = delta % 360;
+            let angleDiff = delta > 180 ? 360 - delta : delta;
+            let rad = angleDiff * Math.PI / 180;
+            let factor = Math.cos(rad) ** 2;   // 0°→1, 90°→0, 180°→1
+            return factor;
+        }
+        
+        // 获取当前潮汐振幅 (像素)
+        function getCurrentTideAmp(moonAngleDeg) {
+            let factor = getTideAmplitudeFactor(moonAngleDeg);
+            let amp = MIN_TIDE_AMP + (MAX_TIDE_AMP - MIN_TIDE_AMP) * factor;
+            return amp;
+        }
+        
+        // 获取当前潮差显示系数 (用于海平面模块: 大潮时潮差大，小潮小)
+        function getTidalRangeFactor(moonAngleDeg) {
+            let factor = getTideAmplitudeFactor(moonAngleDeg);
+            // 映射到潮差幅度 (0.2~1 之间视觉，小潮仍有轻微波动)
+            return 0.25 + factor * 0.75;
+        }
+        
+        // 更新右侧面板信息及潮差提示
+        function updateTideInfo(moonAngleDeg) {
+            let delta = Math.abs(moonAngleDeg - sunAngleFixed);
+            delta = delta % 360;
+            let angleDiff = delta > 180 ? 360 - delta : delta;
+            let factor = getTideAmplitudeFactor(moonAngleDeg);
+            let percent = Math.round(factor * 100);
+            tideStrengthSpan.innerText = percent + "%";
+            sunMoonAngleSpan.innerText = angleDiff + "°";
+            
+            // 潮汐类型文案
+            if (angleDiff < 30 || angleDiff > 150) {
+                tideTypeLabel.innerHTML = "🌕 大潮 (Spring Tide)";
+                tideDescSpan.innerHTML = "🌊 日月引力叠加，潮差最大，高潮更高，低潮更低。";
+                tideRangeHint.innerHTML = "📈 大潮 · 潮差显著增大";
+            } else if (angleDiff > 60 && angleDiff < 120) {
+                tideTypeLabel.innerHTML = "🌗 小潮 (Neap Tide)";
+                tideDescSpan.innerHTML = "💧 日月引力相互削弱，潮差最小，涨落平缓。";
+                tideRangeHint.innerHTML = "📉 小潮 · 潮差明显减小";
+            } else {
+                tideTypeLabel.innerHTML = "🌖 过渡潮 (Intermediate)";
+                tideDescSpan.innerHTML = "🌙 介于大潮与小潮之间，潮差中等。";
+                tideRangeHint.innerHTML = "🌊 中等潮差";
+            }
+            if(angleDiff === 0 || angleDiff === 180) tideTypeLabel.innerHTML = "🌕✨ 大潮 (Spring Tide)  ✨";
+            if(angleDiff === 90) tideTypeLabel.innerHTML = "🌘✨ 小潮 (Neap Tide)  ✨";
+        }
+        
+        // ---- 天体场景绘图: 潮汐椭球 ----
+        function drawScene() {
+            if(!ctx) return;
+            ctx.clearRect(0, 0, width, height);
+            
+            // 星空点缀
+            ctx.fillStyle = "#ffffff30";
+            for(let i=0;i<180;i++) {
+                ctx.beginPath();
+                ctx.arc( (i*131)%width, (i*57)%height, 1+ (i%3), 0, Math.PI*2);
+                ctx.fillStyle = `rgba(255,240,200,${0.2+Math.sin(i)*0.1})`;
+                ctx.fill();
+            }
+            
+            let moonRad = currentMoonAngle * Math.PI / 180;
+            let moonX = centerX + moonOrbitRadius * Math.cos(moonRad);
+            let moonY = centerY + moonOrbitRadius * Math.sin(moonRad);
+            let tideAmp = getCurrentTideAmp(currentMoonAngle);
+            let moonDirRad = moonRad;
+            
+            // 绘制水圈变形
+            const steps = 120;
+            const waterPoints = [];
+            const earthCenter = {x: centerX, y: centerY};
+            const baseRadius = earthRadius + waterBase;
+            
+            for (let i = 0; i <= steps; i++) {
+                let angle = (i / steps) * Math.PI * 2;
+                let tidalFactor = Math.cos(2 * (angle - moonDirRad));
+                let radialOffset = tideAmp * tidalFactor;
+                let r = baseRadius + radialOffset;
+                if (r < earthRadius + 3) r = earthRadius + 3;
+                let x = earthCenter.x + r * Math.cos(angle);
+                let y = earthCenter.y + r * Math.sin(angle);
+                waterPoints.push({x, y});
+            }
+            ctx.beginPath();
+            ctx.moveTo(waterPoints[0].x, waterPoints[0].y);
+            for (let i = 1; i < waterPoints.length; i++) {
+                ctx.lineTo(waterPoints[i].x, waterPoints[i].y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = "rgba(30, 144, 210, 0.45)";
+            ctx.fill();
+            ctx.strokeStyle = "#9ad7ff";
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+            
+            // 地球
+            let grad = ctx.createRadialGradient(centerX-12, centerY-12, 15, centerX, centerY, earthRadius+5);
+            grad.addColorStop(0, '#2f7d5c');
+            grad.addColorStop(1, '#1c5a4b');
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, earthRadius, 0, Math.PI*2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.strokeStyle = "#caf0f8";
+            ctx.stroke();
+            // 大陆示意
+            ctx.beginPath();
+            ctx.ellipse(centerX-20, centerY-15, 18, 14, 0, 0, Math.PI*2);
+            ctx.fillStyle = "#76b58290";
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(centerX+25, centerY+10, 22, 16, -0.3, 0, Math.PI*2);
+            ctx.fill();
+            
+            // 月球
+            let moonGrad = ctx.createRadialGradient(moonX-5, moonY-4, 3, moonX, moonY, moonRadius);
+            moonGrad.addColorStop(0, "#f9f3cf");
+            moonGrad.addColorStop(1, "#c0b99a");
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, moonRadius, 0, Math.PI*2);
+            ctx.fillStyle = moonGrad;
+            ctx.fill();
+            ctx.fillStyle = "#ffe9a3";
+            ctx.font = "bold 12px sans-serif";
+            ctx.fillText("🌙", moonX-9, moonY-8);
+            
+            // 轨道虚线
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, moonOrbitRadius, 0, Math.PI*2);
+            ctx.strokeStyle = "#76c7e080";
+            ctx.setLineDash([6, 10]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // 太阳
+            let sunX = centerX + sunDistance;
+            let sunY = centerY - 15;
+            let sunGrad = ctx.createRadialGradient(sunX-12, sunY-8, 5, sunX, sunY, sunRadius);
+            sunGrad.addColorStop(0, "#ffdd77");
+            sunGrad.addColorStop(1, "#ffaa33");
+            ctx.beginPath();
+            ctx.arc(sunX, sunY, sunRadius, 0, Math.PI*2);
+            ctx.fillStyle = sunGrad;
+            ctx.fill();
+            ctx.fillStyle = "#ffcc55";
+            ctx.font = "bold 20px sans-serif";
+            ctx.fillText("☀️", sunX-18, sunY-12);
+            
+            // 高潮标记
+            let dir1 = moonDirRad, dir2 = moonDirRad + Math.PI;
+            let tipRadius = earthRadius + waterBase + tideAmp + 3;
+            let xTip1 = centerX + tipRadius * Math.cos(dir1);
+            let yTip1 = centerY + tipRadius * Math.sin(dir1);
+            let xTip2 = centerX + tipRadius * Math.cos(dir2);
+            let yTip2 = centerY + tipRadius * Math.sin(dir2);
+            ctx.fillStyle = "#FFE484aa";
+            ctx.beginPath();
+            ctx.arc(xTip1, yTip1, 6, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(xTip2, yTip2, 6, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = "#fff5cf";
+            ctx.fillText("🌊", xTip1-10, yTip1-8);
+            ctx.fillText("🌊", xTip2-10, yTip2-8);
+            
+            // 信息文字
+            ctx.font = "500 13px 'Segoe UI'";
+            ctx.fillStyle = "#caf2ff";
+            ctx.fillText("↑ 高潮区", xTip1-20, yTip1-12);
+            ctx.fillText("↑ 高潮区", xTip2-20, yTip2-12);
+            let showDelta = Math.abs(currentMoonAngle - sunAngleFixed);
+            showDelta = showDelta > 180 ? 360 - showDelta : showDelta;
+            ctx.fillStyle = "#ffd58c";
+            ctx.fillText(`日月夹角 ${showDelta}°`, width-140, 40);
+        }
+        
+        // ========= 海平面动态绘制 =========
+        function drawSeaLevel() {
+            if(!seaCtx) return;
+            seaCtx.clearRect(0, 0, seaWidth, seaHeight);
+            
+            // 背景海洋风格
+            seaCtx.fillStyle = "#022a38";
+            seaCtx.fillRect(0, 0, seaWidth, seaHeight);
+            
+            // 绘制参考线：平均海平面 (中间虚线)
+            const midY = seaHeight / 2;
+            seaCtx.beginPath();
+            seaCtx.setLineDash([8, 6]);
+            seaCtx.strokeStyle = "#9ad7ffaa";
+            seaCtx.lineWidth = 1.2;
+            seaCtx.moveTo(30, midY);
+            seaCtx.lineTo(seaWidth-30, midY);
+            seaCtx.stroke();
+            seaCtx.setLineDash([]);
+            seaCtx.fillStyle = "#bdeeff";
+            seaCtx.font = "10px 'Segoe UI'";
+            seaCtx.fillText("平均海平面", seaWidth-90, midY-3);
+            
+            // 获取当前潮汐调制因子 (大潮小潮影响)
+            let factor = getTideAmplitudeFactor(currentMoonAngle);
+            let rangeFactor = 0.25 + factor * 0.75;  // 范围 0.25~1
+            let currentRangePx = MIN_TIDE_RANGE_PX + (MAX_TIDE_RANGE_PX - MIN_TIDE_RANGE_PX) * rangeFactor;
+            // 当前水位比例 [-1,1] 基于正弦波
+            let waterLevelRatio = Math.sin(tidePhase);   // -1 .. 1
+            // 实际水位偏移像素 (相对于平均海平面)
+            let offsetY = waterLevelRatio * currentRangePx;
+            let waterSurfaceY = midY - offsetY;
+            
+            // 绘制水位填充 (模拟海水)
+            seaCtx.beginPath();
+            seaCtx.rect(30, waterSurfaceY, seaWidth-60, Math.max(2, seaHeight - waterSurfaceY));
+            seaCtx.fillStyle = "#3fa7ccee";
+            seaCtx.fill();
+            // 绘制波浪纹理
+            seaCtx.beginPath();
+            for(let x=30; x<seaWidth-30; x+=12){
+                let waveY = waterSurfaceY + Math.sin(x*0.05 + Date.now()*0.008) * 2;
+                seaCtx.moveTo(x, waveY);
+                seaCtx.lineTo(x+5, waveY-1);
+                seaCtx.strokeStyle = "#b3eaffaa";
+                seaCtx.lineWidth = 1.2;
+                seaCtx.stroke();
+            }
+            
+            // 绘制水位线（潮位线）
+            seaCtx.beginPath();
+            seaCtx.moveTo(30, waterSurfaceY);
+            seaCtx.lineTo(seaWidth-30, waterSurfaceY);
+            seaCtx.strokeStyle = "#FFE484";
+            seaCtx.lineWidth = 2.5;
+            seaCtx.setLineDash([]);
+            seaCtx.stroke();
+            
+            // 绘制高潮/低潮参考虚线范围（根据当前潮差画示意）
+            let highWaterMark = midY - currentRangePx;
+            let lowWaterMark = midY + currentRangePx;
+            seaCtx.beginPath();
+            seaCtx.setLineDash([4, 8]);
+            seaCtx.strokeStyle = "#ffbc6e80";
+            seaCtx.moveTo(25, highWaterMark);
+            seaCtx.lineTo(seaWidth-25, highWaterMark);
+            seaCtx.stroke();
+            seaCtx.beginPath();
+            seaCtx.moveTo(25, lowWaterMark);
+            seaCtx.lineTo(seaWidth-25, lowWaterMark);
+            seaCtx.stroke();
+            seaCtx.fillStyle = "#ffbc6e";
+            seaCtx.font = "9px sans-serif";
+            seaCtx.fillText("高潮参考线", 32, highWaterMark-2);
+            seaCtx.fillText("低潮参考线", 32, lowWaterMark+8);
+            seaCtx.setLineDash([]);
+            
+            // 标注当前潮位数值
+            let tidePercent = ((waterLevelRatio + 1)/2 * 100).toFixed(0);
+            seaCtx.fillStyle = "#FFF7CF";
+            seaCtx.font = "bold 13px 'Segoe UI'";
+            seaCtx.fillText(`🌊 实时潮位: ${tidePercent}%`, seaWidth-150, 30);
+            let rangeShow = (currentRangePx / MAX_TIDE_RANGE_PX * 100).toFixed(0);
+            seaCtx.fillStyle = "#9ed9ff";
+            seaCtx.fillText(`潮差幅度: ${rangeShow}%  (大潮↗小潮↘)`, seaWidth-150, 55);
+            
+            // 添加动态指示涨潮/落潮
+            let trend = (waterLevelRatio > Math.sin(tidePhase - 0.05) ? "↑ 涨潮" : "↓ 落潮");
+            seaCtx.fillStyle = "#d4f1f9";
+            seaCtx.fillText(`${trend}`, 40, 40);
+        }
+        
+        // 更新滑块与公用显示
+        function updateFromState() {
+            moonSlider.value = currentMoonAngle;
+            moonAngleDisplay.innerText = currentMoonAngle.toFixed(0) + "°";
+            updateTideInfo(currentMoonAngle);
+            drawScene();
+            drawSeaLevel();    // 同步海平面视角，水位相位独立但潮差随大潮小潮变化
+        }
+        
+        // 动画循环：处理公转 + 海平面相位更新
+        function animationLoop() {
+            if(autoRotate) {
+                currentMoonAngle += speedDegPerFrame;
+                if(currentMoonAngle >= 360) currentMoonAngle -= 360;
+                if(currentMoonAngle < 0) currentMoonAngle += 360;
+                moonSlider.value = currentMoonAngle;
+            }
+            // 更新海平面潮汐相位 (模拟地球自转引起的潮汐波动)
+            tidePhase += PHASE_SPEED;
+            if(tidePhase > Math.PI * 2) tidePhase -= Math.PI * 2;
+            
+            // 同步显示与重绘
+            moonAngleDisplay.innerText = currentMoonAngle.toFixed(0) + "°";
+            updateTideInfo(currentMoonAngle);
+            drawScene();
+            drawSeaLevel();
+            
+            animationId = requestAnimationFrame(animationLoop);
+        }
+        
+        // 事件绑定
+        function bindEvents() {
+            moonSlider.addEventListener('input', (e) => {
+                if(autoRotate) autoRotate = false;
+                currentMoonAngle = parseFloat(e.target.value);
+                updateFromState();
+            });
+            playBtn.addEventListener('click', () => {
+                autoRotate = true;
+            });
+            pauseBtn.addEventListener('click', () => {
+                autoRotate = false;
+                drawScene();
+                drawSeaLevel();
+            });
+            resetBtn.addEventListener('click', () => {
+                autoRotate = false;
+                currentMoonAngle = 0;
+                moonSlider.value = 0;
+                updateFromState();
+            });
+            speedSlider.addEventListener('input', (e) => {
+                speedDegPerFrame = parseFloat(e.target.value);
+                speedValSpan.innerText = speedDegPerFrame.toFixed(1) + "°/帧";
+            });
+            // 窗口尺寸变化适配海平面canvas尺寸
+            window.addEventListener('resize', () => {
+                if(seaCanvas) {
+                    seaCanvas.width = seaCanvas.clientWidth;
+                    seaWidth = seaCanvas.width;
+                    seaCanvas.height = 200;
+                    seaHeight = 200;
+                    drawSeaLevel();
+                }
+                drawScene();
+            });
+        }
+        
+        function init() {
+            bindEvents();
+            currentMoonAngle = 30;
+            moonSlider.value = currentMoonAngle;
+            tidePhase = 0;
+            updateTideInfo(currentMoonAngle);
+            drawScene();
+            drawSeaLevel();
+            animationLoop();
+        }
+        
+        init();
+    })();
+</script>
+</body>
+</html>
