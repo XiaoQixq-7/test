@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>惠州学院 - 校园旅游导览地图</title>
+    <link rel="stylesheet" href="https://cache.amap.com/lbs/static/main1119.css"/>
+    <style>
+        :root {
+            --easing: cubic-bezier(0.4, 0, 0.2, 1);
+            --sidebar-width: 320px;
+            --bottom-bar-height: 80px;
+            --primary: #1890ff;
+            --teaching: #4285f4;
+            --sports: #ea4335;
+            --leisure: #34a853;
+            --living: #fbbc04;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            background: #000;
+        }
+
+        /* ========== 地图容器 ========== */
+        #container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        /* ========== 侧边栏面板 ========== */
+        #sidebar {
+            position: fixed;
+            top: 0; left: 0;
+            width: var(--sidebar-width);
+            height: 100%;
+            z-index: 10;
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.35s var(--easing), opacity 0.35s var(--easing);
+            box-shadow: 2px 0 20px rgba(0,0,0,0.08);
+        }
+        #sidebar.collapsed {
+            transform: translateX(calc(-1 * var(--sidebar-width) + 40px));
+        }
+
+        /* 折叠把手 */
+        #sidebar-handle {
+            position: fixed;
+            top: 50%;
+            left: var(--sidebar-width);
+            transform: translateY(-50%);
+            width: 40px; height: 80px;
+            z-index: 11;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 0 12px 12px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.06);
+            transition: left 0.35s var(--easing), opacity 0.35s var(--easing);
+            border: 1px solid rgba(0,0,0,0.06);
+            border-left: none;
+            opacity: 0;
+            pointer-events: none;
+        }
+        #sidebar.collapsed ~ #sidebar-handle {
+            left: 0;
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #sidebar-handle svg {
+            width: 18px; height: 18px;
+            transition: transform 0.35s var(--easing);
+        }
+        #sidebar.collapsed ~ #sidebar-handle svg {
+            transform: rotate(180deg);
+        }
+
+        /* 面板头部 */
+        .sidebar-header {
+            padding: 20px 16px 12px;
+            flex-shrink: 0;
+        }
+        .sidebar-header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+        .sidebar-header .subtitle {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+
+        /* 进度环区域 */
+        .progress-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, rgba(24,144,255,0.06), rgba(24,144,255,0.02));
+            border-radius: 12px;
+            margin: 0 12px 12px;
+        }
+        .progress-ring {
+            position: relative;
+            width: 52px; height: 52px;
+            flex-shrink: 0;
+        }
+        .progress-ring svg { transform: rotate(-90deg); }
+        .progress-ring .bg-circle {
+            fill: none;
+            stroke: rgba(0,0,0,0.06);
+            stroke-width: 5;
+        }
+        .progress-ring .fg-circle {
+            fill: none;
+            stroke: var(--primary);
+            stroke-width: 5;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s var(--easing);
+        }
+        .progress-ring .count-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .progress-label {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.5;
+        }
+        .progress-label strong { color: var(--primary); }
+
+        /* 搜索框 */
+        .search-box {
+            margin: 0 12px 10px;
+            position: relative;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px 10px 36px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            font-size: 14px;
+            background: rgba(0,0,0,0.03);
+            outline: none;
+            transition: all 0.25s var(--easing);
+            color: #333;
+        }
+        .search-box input:focus {
+            border-color: var(--primary);
+            background: rgba(24,144,255,0.04);
+            box-shadow: 0 0 0 3px rgba(24,144,255,0.1);
+        }
+        .search-box .search-icon {
+            position: absolute;
+            left: 12px; top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            pointer-events: none;
+        }
+
+        /* 分类标签 */
+        .category-tabs {
+            display: flex;
+            gap: 6px;
+            padding: 0 12px 8px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .category-tab {
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.1);
+            background: rgba(255,255,255,0.6);
+            color: #666;
+            transition: all 0.25s var(--easing);
+            white-space: nowrap;
+            user-select: none;
+        }
+        .category-tab:hover { border-color: var(--primary); color: var(--primary); }
+        .category-tab.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(24,144,255,0.3);
+        }
+
+        /* 景点卡片列表 */
+        .spot-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 12px 12px;
+            scroll-behavior: smooth;
+        }
+        .spot-list::-webkit-scrollbar { width: 4px; }
+        .spot-list::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.12);
+            border-radius: 2px;
+        }
+
+        .spot-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s var(--easing);
+            border: 1px solid rgba(0,0,0,0.04);
+            position: relative;
+            user-select: none;
+        }
+        .spot-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+            border-color: rgba(24,144,255,0.2);
+        }
+        .spot-card.visited { background: rgba(24,144,255,0.03); }
+        .spot-card .card-icon {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            object-fit: contain;
+            flex-shrink: 0;
+            background: rgba(0,0,0,0.03);
+            padding: 3px;
+        }
+        .spot-card .card-info { flex: 1; min-width: 0; }
+        .spot-card .card-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 2px;
+        }
+        .spot-card .card-desc {
+            font-size: 11px;
+            color: #999;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .spot-card .card-check {
+            font-size: 16px;
+            color: var(--primary);
+            flex-shrink: 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .spot-card.visited .card-check { opacity: 1; }
+        .spot-card .card-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            color: #fff;
+            margin-right: 4px;
+        }
+        .tag-teaching { background: var(--teaching); }
+        .tag-sports { background: var(--sports); }
+        .tag-leisure { background: var(--leisure); }
+        .tag-living { background: var(--living); }
+
+        /* ========== 自定义信息窗口 ========== */
+        #info-window {
+            position: fixed;
+            z-index: 20;
+            width: 280px;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+            pointer-events: auto;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: opacity 0.3s var(--easing), transform 0.3s var(--easing);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+        #info-window.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+        #info-window .iw-image {
+            width: 100%; height: 150px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #e8edf5, #dce3ed);
+            display: block;
+        }
+        #info-window .iw-image-placeholder {
+            width: 100%; height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: #ccc;
+        }
+        #info-window .iw-body { padding: 14px 16px; }
+        #info-window .iw-name {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 6px;
+        }
+        #info-window .iw-tags { margin-bottom: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+        #info-window .iw-tag {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            color: #fff;
+        }
+        #info-window .iw-desc {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        #info-window .iw-hours {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+        #info-window .iw-hours::before { content: '🕐 '; }
+        #info-window .iw-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        #info-window .iw-btn {
+            flex: 1;
+            padding: 8px 0;
+            border-radius: 8px;
+            border: none;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.25s var(--easing);
+            text-align: center;
+        }
+        #info-window .iw-btn-detail {
+            background: var(--primary);
+            color: #fff;
+        }
+        #info-window .iw-btn-detail:hover { background: #40a9ff; }
+        #info-window .iw-btn-navi {
+            background: rgba(0,0,0,0.06);
+            color: #555;
+        }
+        #info-window .iw-btn-navi:hover { background: rgba(0,0,0,0.1); }
+        #info-window .iw-close {
+            position: absolute;
+            top: 8px; right: 8px;
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.45);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        #info-window .iw-close:hover { background: rgba(0,0,0,0.65); }
+
+        /* 信息窗口三角指示箭头 */
+        #info-window::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid rgba(255,255,255,0.92);
+        }
+
+        /* ========== 图层切换按钮组 ========== */
+        #layer-switcher {
+            position: fixed;
+            top: 16px; right: 16px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 12px;
+            padding: 4px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        #layer-switcher button {
+            padding: 8px 14px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+            transition: all 0.25s var(--easing);
+            white-space: nowrap;
+        }
+        #layer-switcher button:hover { background: rgba(0,0,0,0.06); color: #333; }
+        #layer-switcher button.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(24,144,255,0.25);
+        }
+
+        /* ========== 回到总览按钮 ========== */
+        #overview-btn {
+            position: fixed;
+            bottom: 110px; right: 20px;
+            z-index: 10;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0,0,0,0.08);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s var(--easing);
+            font-size: 20px;
+        }
+        #overview-btn:hover {
+            background: #fff;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        /* ========== 图例面板 ========== */
+        #legend-toggle {
+            position: fixed;
+            bottom: 170px; right: 20px;
+            z-index: 10;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0,0,0,0.08);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s var(--easing);
+            font-size: 18px;
+            user-select: none;
+        }
+        #legend-toggle:hover {
+            background: #fff;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        #legend-panel {
+            position: fixed;
+            bottom: 170px; right: 72px;
+            z-index: 10;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+            border: 1px solid rgba(255,255,255,0.6);
+            padding: 14px 16px;
+            display: grid;
+            grid-template-columns: repeat(3, auto);
+            gap: 10px 14px;
+            opacity: 0;
+            transform: translateX(10px) scale(0.95);
+            pointer-events: none;
+            transition: opacity 0.3s var(--easing), transform 0.3s var(--easing);
+        }
+        #legend-panel.visible {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+            pointer-events: auto;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            font-size: 12px;
+            color: #555;
+        }
+        .legend-item img {
+            width: 26px; height: 26px;
+            object-fit: contain;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.03);
+            padding: 2px;
+        }
+
+        /* ========== 底部缩略图导航条 ========== */
+        #bottom-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: var(--bottom-bar-height);
+            z-index: 10;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 8px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            box-shadow: 0 -2px 16px rgba(0,0,0,0.04);
+        }
+        #bottom-bar::-webkit-scrollbar { height: 2px; }
+        #bottom-bar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 1px; }
+
+        .thumb-item {
+            flex-shrink: 0;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s var(--easing);
+            border: 2px solid transparent;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.03);
+        }
+        .thumb-item:hover { transform: translateY(-3px); }
+        .thumb-item.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 12px rgba(24,144,255,0.4);
+            transform: translateY(-3px);
+        }
+        .thumb-item img {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            object-fit: contain;
+        }
+        .thumb-item .thumb-check {
+            position: absolute;
+            top: -2px; right: -2px;
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .thumb-item.visited .thumb-check { opacity: 1; }
+
+        /* ========== ElasticMarker 呼吸动画（通过 JS 动态注入到 marker DOM） ========== */
+        @keyframes marker-breathe {
+            0%, 100% { transform: scale(0.95); opacity: 0.85; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+
+        /* ========== 响应式 ========== */
+        @media (max-width: 768px) {
+            :root {
+                --sidebar-width: 100vw;
+                --bottom-bar-height: 60px;
+            }
+            #sidebar { max-width: 100vw; }
+            #sidebar.collapsed { transform: translateX(calc(-1 * 100vw + 40px)); }
+            #info-window { width: min(280px, 90vw); }
+            .thumb-item { width: 36px; height: 36px; }
+            .thumb-item img { width: 24px; height: 24px; }
+            #bottom-bar { gap: 4px; padding: 0 8px; }
+            #overview-btn { bottom: 80px; right: 12px; width: 38px; height: 38px; }
+            #legend-toggle { bottom: 130px; right: 12px; width: 38px; height: 38px; font-size: 16px; }
+            #legend-panel { bottom: 130px; right: 56px; grid-template-columns: repeat(2, auto); gap: 6px 10px; padding: 10px 12px; }
+            #layer-switcher { top: 8px; right: 8px; }
+            #layer-switcher button { padding: 6px 10px; font-size: 11px; }
+        }
+    </style>
+    <script>
+        window._AMapSecurityConfig = {
+            // TODO: 请替换为你的真实 securityJsCode
+            securityJsCode: 'f4664075dbdcce7a0xxxxxxxxxx',
+        }
+    </script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=bf312b969688fc373aaf3e29aafd1d37&plugin=AMap.ElasticMarker"></script>
+</head>
+<body>
+
+<!-- ===== 侧边栏面板 ===== -->
+<div id="sidebar">
+    <div class="sidebar-header">
+        <h1>惠州学院</h1>
+        <div class="subtitle">丰湖校区 · 校园导览地图</div>
+    </div>
+
+    <!-- 打卡进度环 -->
+    <div class="progress-area">
+        <div class="progress-ring">
+            <svg width="52" height="52" viewBox="0 0 52 52">
+                <circle class="bg-circle" cx="26" cy="26" r="22"/>
+                <circle class="fg-circle" id="progress-fg" cx="26" cy="26" r="22"
+                        stroke-dasharray="138.2" stroke-dashoffset="138.2"/>
+            </svg>
+            <div class="count-text" id="progress-count">0/30</div>
+        </div>
+        <div class="progress-label">
+            已游览 <strong id="progress-visited">0</strong> 个景点<br>共 <strong id="progress-total">30</strong> 个
+        </div>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="搜索景点名称...">
+    </div>
+
+    <!-- 分类标签 -->
+    <div class="category-tabs" id="category-tabs">
+        <div class="category-tab active" data-cat="全部">全部</div>
+        <div class="category-tab" data-cat="教学区">📚 教学区</div>
+        <div class="category-tab" data-cat="运动区">⚽ 运动区</div>
+        <div class="category-tab" data-cat="休闲区">🌿 休闲区</div>
+        <div class="category-tab" data-cat="生活区">🏠 生活区</div>
+    </div>
+
+    <!-- 景点卡片列表 -->
+    <div class="spot-list" id="spot-list"></div>
+</div>
+
+<!-- 折叠把手 -->
+<div id="sidebar-handle" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 18 15 12 9 6"/>
+    </svg>
+</div>
+
+<!-- ===== 地图容器 ===== -->
+<div id="container"></div>
+
+<!-- ===== 自定义信息窗口 ===== -->
+<div id="info-window">
+    <button class="iw-close" onclick="closeInfoWindow()">✕</button>
+    <div class="iw-image-placeholder" id="iw-image-area">📷</div>
+    <div class="iw-body">
+        <div class="iw-name" id="iw-name"></div>
+        <div class="iw-tags" id="iw-tags"></div>
+        <div class="iw-desc" id="iw-desc"></div>
+        <div class="iw-hours" id="iw-hours"></div>
+        <div class="iw-buttons">
+            <button class="iw-btn iw-btn-detail" onclick="alert('详情功能开发中')">详情</button>
+            <button class="iw-btn iw-btn-navi" onclick="alert('导航功能开发中')">导航</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 图层切换按钮组 ===== -->
+<div id="layer-switcher">
+    <button class="active" data-layer="normal" onclick="switchLayer('normal', this)">🗺 标准地图</button>
+    <button data-layer="satellite" onclick="switchLayer('satellite', this)">🛰 卫星图</button>
+    <button data-layer="dark" onclick="switchLayer('dark', this)">🌙 暗色主题</button>
+</div>
+
+<!-- ===== 图例面板 ===== -->
+<div id="legend-panel">
+    <div class="legend-item"><img src="./素材库/校门.png" alt="校门">校门</div>
+    <div class="legend-item"><img src="./素材库/教学楼.png" alt="教学楼">教学楼</div>
+    <div class="legend-item"><img src="./素材库/科技楼.png" alt="科技楼">科技楼</div>
+    <div class="legend-item"><img src="./素材库/图书馆.png" alt="图书馆">图书馆</div>
+    <div class="legend-item"><img src="./素材库/体育馆.png" alt="体育馆">体育馆</div>
+    <div class="legend-item"><img src="./素材库/田径场.png" alt="田径场">田径场</div>
+    <div class="legend-item"><img src="./素材库/篮球场.png" alt="篮球场">篮球场</div>
+    <div class="legend-item"><img src="./素材库/足球场.png" alt="足球场">足球场</div>
+    <div class="legend-item"><img src="./素材库/宿舍楼栋.png" alt="宿舍楼">宿舍楼</div>
+    <div class="legend-item"><img src="./素材库/食堂.png" alt="食堂">食堂</div>
+    <div class="legend-item"><img src="./素材库/湖泊.png" alt="湖泊">湖泊</div>
+    <div class="legend-item"><img src="./素材库/山体.png" alt="后山">后山</div>
+    <div class="legend-item"><img src="./素材库/树木.png" alt="广场/亭台">广场/亭台</div>
+    <div class="legend-item"><img src="./素材库/生活区.png" alt="购物区">购物区</div>
+    <div class="legend-item"><img src="./素材库/停车场.png" alt="停车场">停车场</div>
+</div>
+<div id="legend-toggle" title="图例" onclick="toggleLegend()">📋</div>
+
+<!-- ===== 回到总览按钮 ===== -->
+<div id="overview-btn" title="回到总览" onclick="flyToOverview()">🏠</div>
+
+<!-- ===== 底部缩略图导航条 ===== -->
+<div id="bottom-bar"></div>
+
+<script>
+/* =================================================================================
+ *  惠州学院校园旅游导览地图 - 核心脚本（高德地图 JS API v2.0 + ElasticMarker）
+ *  模块顺序：数据定义 → 状态管理 → 地图初始化 → 图标管理 → 面板交互 → 覆盖层
+ * ================================================================================= */
+
+/* ==================== 一、数据定义 ==================== */
+
+/* 分类配色与样式映射 */
+const CATEGORIES = {
+    '教学区': { color: '#4285f4', tagClass: 'tag-teaching' },
+    '运动区': { color: '#ea4335', tagClass: 'tag-sports' },
+    '休闲区': { color: '#34a853', tagClass: 'tag-leisure' },
+    '生活区': { color: '#fbbc04', tagClass: 'tag-living' },
+};
+
+/**
+ * 景点数据：坐标由用户提供（基于惠州学院丰湖校区真实定位）
+ * icon 路径均指向同级目录下 素材库/ 文件夹中的实际图标文件
+ */
+const spots = [
+    // ======================== 教学区（8个） ========================
+    {
+        id: 'library', name: '叶竹君图书馆', category: '教学区',
+        position: [114.418535, 23.036506],
+        icon: './素材库/图书馆.png',
+        description: '叶竹君图书馆，馆藏丰富，设有自习区、电子阅览室和学术报告厅，是学子们求知的核心殿堂。',
+        openingHours: '08:00 - 22:00',
+        image: './素材库/图书馆.png',
+        zoomLevel: 17,
+        tags: ['自习', '借阅', '打印']
+    },
+    {
+        id: 'xuri-south', name: '旭日教学楼（南楼）', category: '教学区',
+        position: [114.417945, 23.038988],
+        icon: './素材库/教学楼.png',
+        description: '旭日教学楼南楼，主要承担文科类课程教学，设有多媒体教室、阶梯教室和学术报告厅。',
+        openingHours: '07:00 - 21:30',
+        image: './素材库/教学楼.png',
+        zoomLevel: 17,
+        tags: ['上课', '自习', '讲座']
+    },
+    {
+        id: 'xuri-north', name: '旭日教学楼（北楼）', category: '教学区',
+        position: [114.417384, 23.040597],
+        icon: './素材库/教学楼.png',
+        description: '旭日教学楼北楼，主要承担理工科类课程教学，配备专业实验室和计算机机房。',
+        openingHours: '07:00 - 21:30',
+        image: './素材库/教学楼.png',
+        zoomLevel: 17,
+        tags: ['上课', '实验', '自习']
+    },
+    {
+        id: 'science', name: '旭日科技楼', category: '教学区',
+        position: [114.42048, 23.040278],
+        icon: './素材库/科技楼.png',
+        description: '旭日科技楼是学校科研创新核心基地，各学院研究中心和重点实验室汇聚于此。',
+        openingHours: '08:00 - 18:00',
+        image: './素材库/科技楼.png',
+        zoomLevel: 17,
+        tags: ['科研', '实验', '创新']
+    },
+    {
+        id: 'chem', name: '化工楼（教学楼）', category: '教学区',
+        position: [114.416332, 23.039319],
+        icon: './素材库/教学楼.png',
+        description: '化学化工教学楼，配备专业实验室、通风设备和科研仪器，承担化学化工类课程教学。',
+        openingHours: '07:30 - 21:00',
+        image: './素材库/教学楼.png',
+        zoomLevel: 17,
+        tags: ['化学', '实验', '教学']
+    },
+    {
+        id: 'electronic', name: '电子楼（教学楼）', category: '教学区',
+        position: [114.418951, 23.040986],
+        icon: './素材库/教学楼.png',
+        description: '电子信息教学楼，设有电路实验室、通信实验室和嵌入式系统开发实训室。',
+        openingHours: '07:30 - 21:00',
+        image: './素材库/教学楼.png',
+        zoomLevel: 17,
+        tags: ['电子', '实验', '教学']
+    },
+    {
+        id: 'music', name: '音乐楼（教学楼）', category: '教学区',
+        position: [114.420117, 23.041086],
+        icon: './素材库/教学楼.png',
+        description: '音乐教学楼，配备专业琴房、排练厅和录音棚，承担音乐教育与表演相关课程。',
+        openingHours: '07:30 - 21:30',
+        image: './素材库/教学楼.png',
+        zoomLevel: 17,
+        tags: ['音乐', '排练', '教学']
+    },
+    {
+        id: 'admin', name: '行政楼', category: '教学区',
+        position: [114.420917, 23.037931],
+        icon: './素材库/科技楼.png',
+        description: '学校行政办公中心，各职能部门集中办公，为全校师生提供一站式行政服务。',
+        openingHours: '08:30 - 17:30',
+        image: './素材库/科技楼.png',
+        zoomLevel: 17,
+        tags: ['办公', '服务', '事务']
+    },
+
+    // ======================== 运动区（5个） ========================
+    {
+        id: 'track', name: '田径场', category: '运动区',
+        position: [114.416813, 23.036916],
+        icon: './素材库/田径场.png',
+        description: '标准400米塑胶跑道田径场，配备观众看台和体育器材室，是校运会和日常锻炼的主要场所。',
+        openingHours: '05:30 - 21:30',
+        image: './素材库/田径场.png',
+        zoomLevel: 17,
+        tags: ['跑步', '田径', '运动会']
+    },
+    {
+        id: 'football', name: '足球场', category: '运动区',
+        position: [114.417025, 23.037277],
+        icon: './素材库/足球场.png',
+        description: '标准11人制足球场，人工草皮，周边有围栏和简易看台，是足球爱好者的主场。',
+        openingHours: '06:00 - 21:00',
+        image: './素材库/足球场.png',
+        zoomLevel: 17,
+        tags: ['足球', '比赛', '训练']
+    },
+    {
+        id: 'basketball-zhong', name: '中苑篮球场', category: '运动区',
+        position: [114.41594, 23.036578],
+        icon: './素材库/篮球场.png',
+        description: '中苑室外篮球场，多片标准场地，铺设防滑塑胶地面，是学生日常篮球运动的首选。',
+        openingHours: '06:00 - 22:00',
+        image: './素材库/篮球场.png',
+        zoomLevel: 17,
+        tags: ['篮球', '运动', '中苑']
+    },
+    {
+        id: 'basketball-bei', name: '北苑篮球场', category: '运动区',
+        position: [114.418106, 23.042459],
+        icon: './素材库/篮球场.png',
+        description: '北苑室外篮球场，靠近北苑宿舍区，方便北区同学就近运动健身。',
+        openingHours: '06:00 - 22:00',
+        image: './素材库/篮球场.png',
+        zoomLevel: 17,
+        tags: ['篮球', '运动', '北苑']
+    },
+    {
+        id: 'gym', name: '体育馆', category: '运动区',
+        position: [114.418805, 23.042672],
+        icon: './素材库/体育馆.png',
+        description: '综合体育馆，内含篮球馆、羽毛球馆、乒乓球室和健身房，可承办大型赛事和文艺演出。',
+        openingHours: '06:00 - 21:00',
+        image: './素材库/体育馆.png',
+        zoomLevel: 17,
+        tags: ['运动', '比赛', '健身']
+    },
+
+    // ======================== 休闲区（4个） ========================
+    {
+        id: 'lake', name: '蓬瀛湖', category: '休闲区',
+        position: [114.419607, 23.038049],
+        icon: './素材库/湖泊.png',
+        description: '蓬瀛湖是惠州学院的标志性景观，湖水清澈、绿树环绕，是散步、晨读和摄影的理想场所。',
+        openingHours: '全天开放',
+        image: './素材库/湖泊.png',
+        zoomLevel: 17,
+        tags: ['散步', '摄影', '晨读']
+    },
+    {
+        id: 'hill', name: '后山', category: '休闲区',
+        position: [114.414135, 23.042357],
+        icon: './素材库/山体.png',
+        description: '校园后山绿道蜿蜒，植被茂密、空气清新，沿山脊设有步行道和休息凉亭，可俯瞰校园全景。',
+        openingHours: '全天开放',
+        image: './素材库/山体.png',
+        zoomLevel: 16,
+        tags: ['登山', '观景', '健身']
+    },
+    {
+        id: 'xuri-square', name: '旭日广场', category: '休闲区',
+        position: [114.418349, 23.037818],
+        icon: './素材库/树木.png',
+        description: '旭日广场位于校园核心地带，是大型集会、社团活动和户外展览的主要场所，绿植环绕环境优美。',
+        openingHours: '全天开放',
+        image: './素材库/树木.png',
+        zoomLevel: 17,
+        tags: ['广场', '集会', '活动']
+    },
+    {
+        id: 'chengguan-pavilion', name: '澄观亭', category: '休闲区',
+        position: [114.419869, 23.039282],
+        icon: './素材库/树木.png',
+        description: '澄观亭坐落于蓬瀛湖畔，飞檐翘角、古色古香，是品茗赏景、静心阅读的绝佳去处。',
+        openingHours: '全天开放',
+        image: './素材库/树木.png',
+        zoomLevel: 17,
+        tags: ['凉亭', '赏景', '休息']
+    },
+
+    // ======================== 生活区（12个） ========================
+    {
+        id: 'dorm-zhong-1', name: '中苑宿舍楼1', category: '生活区',
+        position: [114.414969, 23.03559],
+        icon: './素材库/宿舍楼栋.png',
+        description: '中苑学生宿舍区1号楼，环境整洁，配有空调、热水系统和公共洗衣房，周边生活设施齐全。',
+        openingHours: '全天（门禁 23:30）',
+        image: './素材库/宿舍楼栋.png',
+        zoomLevel: 17,
+        tags: ['住宿', '生活', '中苑']
+    },
+    {
+        id: 'dorm-zhong-2', name: '中苑宿舍楼2', category: '生活区',
+        position: [114.414755, 23.033557],
+        icon: './素材库/宿舍楼栋.png',
+        description: '中苑学生宿舍区2号楼，靠近南校门和购物区，交通便利，楼下设有便利店和快递驿站。',
+        openingHours: '全天（门禁 23:30）',
+        image: './素材库/宿舍楼栋.png',
+        zoomLevel: 17,
+        tags: ['住宿', '生活', '中苑']
+    },
+    {
+        id: 'dorm-nan-1', name: '南苑宿舍楼1', category: '生活区',
+        position: [114.417593, 23.033931],
+        icon: './素材库/宿舍楼栋.png',
+        description: '南苑学生宿舍区1号楼，位于校园南侧核心住宿区，环境安静，生活配套设施完善。',
+        openingHours: '全天（门禁 23:30）',
+        image: './素材库/宿舍楼栋.png',
+        zoomLevel: 17,
+        tags: ['住宿', '生活', '南苑']
+    },
+    {
+        id: 'dorm-nan-2', name: '南苑宿舍楼2', category: '生活区',
+        position: [114.415489, 23.032278],
+        icon: './素材库/宿舍楼栋.png',
+        description: '南苑学生宿舍区2号楼，紧邻购物区和食堂，日常生活极为便利。',
+        openingHours: '全天（门禁 23:30）',
+        image: './素材库/宿舍楼栋.png',
+        zoomLevel: 17,
+        tags: ['住宿', '生活', '南苑']
+    },
+    {
+        id: 'shopping', name: '购物区', category: '生活区',
+        position: [114.414199, 23.03384],
+        icon: './素材库/生活区.png',
+        description: '校园购物商业区，设有超市、文具店、打印店、奶茶店等，满足师生日常生活购物需求。',
+        openingHours: '08:00 - 22:00',
+        image: './素材库/生活区.png',
+        zoomLevel: 17,
+        tags: ['购物', '超市', '生活']
+    },
+    {
+        id: 'canteen-zhong', name: '中苑食堂', category: '生活区',
+        position: [114.415906, 23.034479],
+        icon: './素材库/食堂.png',
+        description: '中苑食堂共三层，提供粤菜、川菜等多种风味美食，可同时容纳数千人就餐。',
+        openingHours: '06:30 - 20:00',
+        image: './素材库/食堂.png',
+        zoomLevel: 17,
+        tags: ['餐饮', '中苑', '就餐']
+    },
+    {
+        id: 'canteen-bei', name: '北苑食堂', category: '生活区',
+        position: [114.418039, 23.044043],
+        icon: './素材库/食堂.png',
+        description: '北苑食堂靠近北苑宿舍区，提供早午晚三餐及夜宵服务，地方特色小吃深受学生喜爱。',
+        openingHours: '06:30 - 22:00',
+        image: './素材库/食堂.png',
+        zoomLevel: 17,
+        tags: ['餐饮', '北苑', '夜宵']
+    },
+    {
+        id: 'east-gate', name: '东门（正门）', category: '生活区',
+        position: [114.421969, 23.038068],
+        icon: './素材库/校门.png',
+        description: '惠州学院正门，面朝演达大道，气势恢宏，是进出校园的主要通道和标志性建筑。',
+        openingHours: '全天开放',
+        image: './素材库/校门.png',
+        zoomLevel: 16,
+        tags: ['入口', '地标', '正门']
+    },
+    {
+        id: 'northeast-gate', name: '东北门', category: '生活区',
+        position: [114.419735, 23.042455],
+        icon: './素材库/校门.png',
+        description: '东北门靠近教师公寓和北苑宿舍区，是连接校园与北侧道路的重要出入口。',
+        openingHours: '全天开放',
+        image: './素材库/校门.png',
+        zoomLevel: 17,
+        tags: ['入口', '东北', '交通']
+    },
+    {
+        id: 'student-center', name: '学生中心', category: '生活区',
+        position: [114.41679, 23.035373],
+        icon: './素材库/宿舍楼栋.png',
+        description: '学生活动中心，集社团办公、文艺排练、就业指导和学生服务于一体的综合服务大楼。',
+        openingHours: '08:00 - 21:30',
+        image: './素材库/宿舍楼栋.png',
+        zoomLevel: 17,
+        tags: ['活动', '社团', '服务']
+    },
+    {
+        id: 'parking-student', name: '学生中心停车场', category: '生活区',
+        position: [114.417158, 23.036018],
+        icon: './素材库/停车场.png',
+        description: '学生活动中心旁停车场，供师生和来访车辆停放，设有新能源充电桩。',
+        openingHours: '全天开放',
+        image: './素材库/停车场.png',
+        zoomLevel: 17,
+        tags: ['停车', '充电', '交通']
+    },
+    {
+        id: 'parking-admin', name: '行政楼停车场', category: '生活区',
+        position: [114.420673, 23.038381],
+        icon: './素材库/停车场.png',
+        description: '行政楼旁停车场，主要供教职工和公务车辆使用，毗邻蓬瀛湖，环境优美。',
+        openingHours: '全天开放',
+        image: './素材库/停车场.png',
+        zoomLevel: 17,
+        tags: ['停车', '教职工', '办公']
+    },
+];
+
+/* 推荐游览路径：东门(正门) → 蓬瀛湖 → 叶竹君图书馆 → 田径场 → 旭日教学楼(南楼) → 体育馆 → 东北门 */
+const tourRoutePath = [
+    [114.421969, 23.038068],  // 东门（正门）
+    [114.419607, 23.038049],  // 蓬瀛湖
+    [114.418535, 23.036506],  // 叶竹君图书馆
+    [114.416813, 23.036916],  // 田径场
+    [114.417945, 23.038988],  // 旭日教学楼（南楼）
+    [114.418805, 23.042672],  // 体育馆
+    [114.419735, 23.042455],  // 东北门
+];
+
+/* ==================== 二、全局状态管理 ==================== */
+let map;
+let activeSpotId = null;          // 当前激活（被点击）的景点 id
+let currentCategory = '全部';     // 当前侧边栏分类筛选
+let searchKeyword = '';           // 当前搜索关键词
+let elasticMarkers = {};          // { spotId / spotId+'_active': ElasticMarker }
+let visitedSpots = {};            // { spotId: true } 从 localStorage 加载
+let sidebarCollapsed = false;
+let infoWindowVisible = false;
+let dashOffsetAnimId = null;     // 路径动画定时器
+let isFlying = false;            // 飞行锁，防止快速连续点击导致动画冲突
+
+/* 从 localStorage 加载已游览记录 */
+function loadVisited() {
+    try {
+        var data = localStorage.getItem('huizhou_tour_visited');
+        visitedSpots = data ? JSON.parse(data) : {};
+    } catch (e) {
+        visitedSpots = {};
+    }
+}
+
+/* 保存已游览记录到 localStorage */
+function saveVisited() {
+    try {
+        localStorage.setItem('huizhou_tour_visited', JSON.stringify(visitedSpots));
+    } catch (e) { /* 忽略存储错误 */ }
+}
+
+/* 标记景点为已游览，同时更新 UI */
+function markVisited(spotId) {
+    visitedSpots[spotId] = true;
+    saveVisited();
+    updateProgressUI();
+    refreshSpotCards();
+    refreshBottomBar();
+}
+
+/* 获取已游览总数 */
+function getVisitedCount() {
+    return Object.keys(visitedSpots).length;
+}
+
+/* ==================== 三、地图初始化 ==================== */
+function initMap() {
+    map = new AMap.Map('container', {
+        viewMode: '3D',
+        turboMode: false,
+        showIndoorMap: false,
+        defaultCursor: 'pointer',
+        showBuildingBlock: false,
+        zooms: [17, 17.5],
+        showLabel: true,
+        zoom: 16,
+        pitch: 55,
+        rotation: 45,
+        center: [114.415757, 23.03699],
+        forceVector: true,
+    });
+
+    /* 点击地图空白区域：关闭信息窗口 + 取消激活 */
+    map.on('click', function (ev) {
+        if (infoWindowVisible) {
+            closeInfoWindow();
+        }
+        deactivateAllMarkers();
+    });
+
+    /* 地图移动/缩放结束后更新信息窗口位置 */
+    map.on('moveend', onMapMoveEnd);
+    map.on('zoomend', onMapMoveEnd);
+}
+
+/* ==================== 四、ElasticMarker 图标管理 ==================== */
+
+/**
+ * 构建 zoomStyleMapping：
+ *   zoom 15-16 → 样式索引 0（小图标 35×35）
+ *   zoom 17-19 → 样式索引 1（标准图标 50×50）
+ */
+function buildZoomStyleMapping() {
+    var mapping = {};
+    mapping[17] = 1;
+    return mapping;
+}
+var zoomStyleMapping = buildZoomStyleMapping();
+
+/* 为景点创建默认态的 ElasticMarker（带呼吸动画、两档尺寸） */
+function createElasticMarker(spot) {
+    var smallSize = [35, 35];
+    var normalSize = [50, 50];
+
+    var marker = new AMap.ElasticMarker({
+        position: spot.position,
+        zooms: [17, 17.5],
+        offset: [0, 0],
+        styles: [
+            // 样式索引 0：zoom 15-16 时的小图标
+            {
+                icon: {
+                    img: spot.icon,
+                    size: smallSize,
+                    anchor: 'bottom-center',
+                    imageSize: smallSize,
+                    fitZoom: 15,
+                    scaleFactor: 0.8,
+                    maxScale: 1.5,
+                    minScale: 0.125,
+                }
+            },
+            // 样式索引 1：zoom 17-19 时的标准图标
+            {
+                icon: {
+                    img: spot.icon,
+                    size: normalSize,
+                    anchor: 'bottom-center',
+                    imageSize: normalSize,
+                    fitZoom: 17,
+                    scaleFactor: 0.8,
+                    maxScale: 1.5,
+                    minScale: 0.125,
+                }
+            },
+        ],
+        zoomStyleMapping: zoomStyleMapping,
+    });
+
+    /* 点击 marker 触发交互 */
+    marker.on('click', function () {
+        onSpotClick(spot);
+    });
+
+    /* 尝试注入呼吸动画 CSS（ElasticMarker 渲染完成后可获取 DOM） */
+    marker.on('complete', function () {
+        addBreathAnimation(marker);
+    });
+    setTimeout(function () {
+        addBreathAnimation(marker);
+    }, 300);
+
+    return marker;
+}
+
+/* 为 ElasticMarker 的 DOM 根元素添加呼吸动画类 */
+function addBreathAnimation(marker) {
+    try {
+        var dom = marker.getDom();
+        if (dom) {
+            dom.style.animation = 'marker-breathe 2s ease-in-out infinite';
+            dom.style.transformOrigin = 'bottom center';
+        }
+    } catch (e) { /* 忽略 */ }
+}
+
+/* 从 marker DOM 移除呼吸动画 */
+function removeBreathAnimation(marker) {
+    try {
+        var dom = marker.getDom();
+        if (dom) {
+            dom.style.animation = '';
+        }
+    } catch (e) { /* 忽略 */ }
+}
+
+/* 创建激活态的大尺寸 marker（120×120，无呼吸动画，锚点 bottom-center） */
+function createActiveMarker(spot) {
+    var largeSize = [120, 120];
+
+    var activeZmMapping = {};
+    for (var z = 15; z <= 19; z++) { activeZmMapping[z] = 0; }
+
+    var marker = new AMap.ElasticMarker({
+        position: spot.position,
+        zooms: [17, 17.5],
+        offset: [0, 0],
+        styles: [
+            {
+                icon: {
+                    img: spot.icon,
+                    size: largeSize,
+                    anchor: 'bottom-center',
+                    imageSize: largeSize,
+                    fitZoom: 17,
+                    scaleFactor: 0.9,
+                    maxScale: 1.2,
+                    minScale: 0.125,
+                }
+            },
+        ],
+        zoomStyleMapping: activeZmMapping,
+    });
+
+    marker.on('click', function () {
+        onSpotClick(spot);
+    });
+
+    return marker;
+}
+
+/* 在地图上添加所有景点的默认 ElasticMarker */
+function initAllMarkers() {
+    spots.forEach(function (spot) {
+        var marker = createElasticMarker(spot);
+        elasticMarkers[spot.id] = marker;
+        map.add(marker);
+    });
+}
+
+/* 取消所有图标的激活状态，恢复为默认 marker */
+function deactivateAllMarkers() {
+    if (!activeSpotId) return;
+
+    var prevId = activeSpotId;
+    activeSpotId = null;
+
+    // 移除旧的激活态 marker
+    var activeKey = prevId + '_active';
+    if (elasticMarkers[activeKey]) {
+        map.remove(elasticMarkers[activeKey]);
+        delete elasticMarkers[activeKey];
+    }
+
+    // 如果默认 marker 被移除了则重建
+    var spot = spots.find(function (s) { return s.id === prevId; });
+    if (spot && !elasticMarkers[prevId]) {
+        var defaultMarker = createElasticMarker(spot);
+        elasticMarkers[prevId] = defaultMarker;
+        map.add(defaultMarker);
+    }
+}
+
+/* 激活指定景点的图标（替换为 120×120 大图标） */
+function activateMarker(spotId) {
+    if (activeSpotId === spotId) return;
+    if (activeSpotId) deactivateAllMarkers();
+
+    var spot = spots.find(function (s) { return s.id === spotId; });
+    if (!spot) return;
+
+    // 移除默认 marker
+    if (elasticMarkers[spotId]) {
+        map.remove(elasticMarkers[spotId]);
+        delete elasticMarkers[spotId];
+    }
+
+    // 添加激活态大图标
+    var activeMarker = createActiveMarker(spot);
+    elasticMarkers[spotId + '_active'] = activeMarker;
+    map.add(activeMarker);
+
+    activeSpotId = spotId;
+}
+
+/* ==================== 五、景点点击交互与视域飞行 ==================== */
+
+/**
+ * 景点点击统一入口：激活图标 → 标记游览 → 平滑飞行 → 弹出信息窗口
+ * isFlying 锁防止快速连续点击时动画冲突，确保飞行过程平滑自然。
+ */
+function onSpotClick(spot) {
+    if (isFlying) return;  // 上一次飞行尚未完成，忽略
+    isFlying = true;
+
+    // 激活图标 + 标记已游览
+    activateMarker(spot.id);
+    markVisited(spot.id);
+
+    // 先关闭旧的信息窗口
+    closeInfoWindow();
+
+    // 平滑飞行：使用 setZoomAndCenter，动画时长 1200ms 使过渡更自然
+    map.setZoomAndCenter(spot.zoomLevel || 17, spot.position, true, 1200);
+
+    // 飞行结束后弹出信息窗口并解除锁定
+    setTimeout(function () {
+        showInfoWindow(spot);
+        isFlying = false;
+    }, 1250);
+}
+
+/* ==================== 六、自定义信息窗口 ==================== */
+var infoWindowEl = document.getElementById('info-window');
+
+/* 显示某景点的信息窗口（毛玻璃卡片风格） */
+function showInfoWindow(spot) {
+    document.getElementById('iw-name').textContent = spot.name;
+    document.getElementById('iw-desc').textContent = spot.description;
+    document.getElementById('iw-hours').textContent = spot.openingHours || '';
+
+    // 标签区域
+    var tagsEl = document.getElementById('iw-tags');
+    tagsEl.innerHTML = '';
+
+    // 分类标签（左侧）
+    var catTag = document.createElement('span');
+    catTag.className = 'iw-tag';
+    catTag.style.background = (CATEGORIES[spot.category] || {}).color || '#999';
+    catTag.textContent = spot.category;
+    tagsEl.appendChild(catTag);
+
+    // 属性标签
+    (spot.tags || []).forEach(function (t) {
+        var tag = document.createElement('span');
+        tag.className = 'iw-tag';
+        tag.style.background = '#888';
+        tag.textContent = t;
+        tagsEl.appendChild(tag);
+    });
+
+    // 景点图片
+    var imgArea = document.getElementById('iw-image-area');
+    imgArea.innerHTML = '';
+    var img = document.createElement('img');
+    img.src = spot.image || spot.icon;
+    img.className = 'iw-image';
+    img.alt = spot.name;
+    img.onerror = function () {
+        imgArea.innerHTML = '<div class="iw-image-placeholder">📷</div>';
+    };
+    imgArea.appendChild(img);
+
+    // 显示
+    infoWindowVisible = true;
+    infoWindowEl.classList.add('visible');
+    updateInfoWindowPosition();
+}
+
+/* 关闭信息窗口 */
+function closeInfoWindow() {
+    infoWindowVisible = false;
+    infoWindowEl.classList.remove('visible');
+}
+
+/**
+ * 将当前激活景点的地理坐标转为屏幕坐标，实时更新信息窗口位置。
+ * 窗口定位在图标上方，并做边界约束防止溢出屏幕。
+ */
+function updateInfoWindowPosition() {
+    if (!infoWindowVisible || !activeSpotId) return;
+
+    var spot = spots.find(function (s) { return s.id === activeSpotId; });
+    if (!spot) return;
+
+    try {
+        var pixel = map.lngLatToContainer(spot.position);
+        var iwWidth = infoWindowEl.offsetWidth;
+        var iwHeight = infoWindowEl.offsetHeight;
+
+        // 窗口位于图标上方，120px 大图标需要更多偏移量
+        var left = pixel.x - iwWidth / 2;
+        var top = pixel.y - iwHeight - 135;
+
+        // 边界约束
+        var margin = 10;
+        var maxLeft = window.innerWidth - iwWidth - margin;
+        var maxTop = window.innerHeight - iwHeight - margin;
+        left = Math.max(margin, Math.min(left, maxLeft));
+        top = Math.max(margin, Math.min(top, maxTop));
+
+        infoWindowEl.style.left = left + 'px';
+        infoWindowEl.style.top = top + 'px';
+    } catch (e) { /* 忽略坐标转换错误 */ }
+}
+
+/* 窗口大小改变时重新计算信息窗口位置 */
+window.addEventListener('resize', updateInfoWindowPosition);
+
+/* ==================== 七、推荐游览路径（Polyline） ==================== */
+
+/* 在地图上绘制虚线游览路径，搭配颜色渐变流动动画 */
+function initTourRoute() {
+    var routeLine = new AMap.Polyline({
+        path: tourRoutePath,
+        strokeColor: '#ff8c42',
+        strokeWeight: 5,
+        strokeStyle: 'dashed',
+        strokeDasharray: [12, 8],
+        lineJoin: 'round',
+        lineCap: 'round',
+        zIndex: 3,
+        showDir: true,
+    });
+    routeLine.setMap(map);
+
+    // 通过定时更新颜色模拟流动光点效果
+    var offset = 0;
+    var colors = ['#ff8c42', '#ffa94d', '#ffb366', '#69b7ff', '#4dabf7', '#228be6'];
+    dashOffsetAnimId = setInterval(function () {
+        offset = (offset + 0.5) % 20;
+        var colorIdx = Math.floor((offset / 20) * colors.length);
+        routeLine.setOptions({ strokeColor: colors[colorIdx % colors.length] });
+    }, 200);
+
+    // 起点标记
+    var startMarker = new AMap.Marker({
+        position: tourRoutePath[0],
+        label: { content: '起点', offset: new AMap.Pixel(0, -25) },
+        zIndex: 10,
+    });
+    startMarker.setMap(map);
+
+    // 终点标记
+    var endMarker = new AMap.Marker({
+        position: tourRoutePath[tourRoutePath.length - 1],
+        label: { content: '终点', offset: new AMap.Pixel(0, -25) },
+        zIndex: 10,
+    });
+    endMarker.setMap(map);
+}
+
+/* ==================== 八、侧边栏面板交互 ==================== */
+
+/* 折叠/展开侧边栏 */
+function toggleSidebar() {
+    sidebarCollapsed = !sidebarCollapsed;
+    var sidebar = document.getElementById('sidebar');
+    if (sidebarCollapsed) {
+        sidebar.classList.add('collapsed');
+    } else {
+        sidebar.classList.remove('collapsed');
+    }
+}
+
+/* 切换图例面板的显示/隐藏 */
+var legendVisible = false;
+function toggleLegend() {
+    legendVisible = !legendVisible;
+    var panel = document.getElementById('legend-panel');
+    if (legendVisible) {
+        panel.classList.add('visible');
+    } else {
+        panel.classList.remove('visible');
+    }
+}
+
+/* 根据分类和关键词刷新侧边栏景点卡片列表 */
+function refreshSpotCards() {
+    var listEl = document.getElementById('spot-list');
+    listEl.innerHTML = '';
+
+    var filteredSpots = spots;
+
+    // 分类筛选
+    if (currentCategory !== '全部') {
+        filteredSpots = filteredSpots.filter(function (s) {
+            return s.category === currentCategory;
+        });
+    }
+
+    // 关键词模糊搜索（匹配名称或标签）
+    if (searchKeyword.trim()) {
+        var kw = searchKeyword.trim().toLowerCase();
+        filteredSpots = filteredSpots.filter(function (s) {
+            return s.name.toLowerCase().indexOf(kw) !== -1 ||
+                   (s.tags || []).some(function (t) { return t.toLowerCase().indexOf(kw) !== -1; });
+        });
+    }
+
+    filteredSpots.forEach(function (spot) {
+        var card = document.createElement('div');
+        card.className = 'spot-card';
+        if (visitedSpots[spot.id]) card.classList.add('visited');
+
+        var catCfg = CATEGORIES[spot.category] || {};
+
+        card.innerHTML =
+            '<img class="card-icon" src="' + spot.icon + '" alt="' + spot.name +
+            '" onerror="this.style.display=\'none\'">' +
+            '<div class="card-info">' +
+                '<div class="card-name">' + spot.name +
+                    '<span class="card-tag ' + catCfg.tagClass + '" style="margin-left:6px;">' +
+                    spot.category + '</span>' +
+                '</div>' +
+                '<div class="card-desc">' + spot.description + '</div>' +
+            '</div>' +
+            '<span class="card-check">✓</span>';
+
+        card.addEventListener('click', function () {
+            onSpotClick(spot);
+            // 移动端自动折叠侧边栏
+            if (window.innerWidth < 768) {
+                sidebarCollapsed = true;
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+        });
+
+        listEl.appendChild(card);
+    });
+
+    // 无结果提示
+    if (filteredSpots.length === 0) {
+        listEl.innerHTML =
+            '<div style="text-align:center;padding:40px 0;color:#999;">没有找到匹配的景点</div>';
+    }
+}
+
+/* 更新进度环与文字 */
+function updateProgressUI() {
+    var visitedCount = getVisitedCount();
+    var total = spots.length;
+    var circumference = 138.2;   // 2 * π * 22 ≈ 138.2
+    var progress = visitedCount / total;
+    var offset = circumference * (1 - progress);
+
+    document.getElementById('progress-fg').style.strokeDashoffset = offset;
+    document.getElementById('progress-count').textContent = visitedCount + '/' + total;
+    document.getElementById('progress-visited').textContent = visitedCount;
+    document.getElementById('progress-total').textContent = total;
+}
+
+// ---- 搜索框事件 ----
+document.getElementById('search-input').addEventListener('input', function (e) {
+    searchKeyword = e.target.value;
+    refreshSpotCards();
+});
+
+// ---- 分类标签点击事件 ----
+document.getElementById('category-tabs').addEventListener('click', function (e) {
+    if (!e.target.classList.contains('category-tab')) return;
+    currentCategory = e.target.dataset.cat;
+
+    document.querySelectorAll('.category-tab').forEach(function (tab) {
+        tab.classList.remove('active');
+    });
+    e.target.classList.add('active');
+
+    refreshSpotCards();
+});
+
+/* ==================== 九、底部缩略图导航条 ==================== */
+
+/* 渲染全部景点圆形缩略图 */
+function refreshBottomBar() {
+    var barEl = document.getElementById('bottom-bar');
+    barEl.innerHTML = '';
+
+    spots.forEach(function (spot) {
+        var item = document.createElement('div');
+        item.className = 'thumb-item';
+        if (visitedSpots[spot.id]) item.classList.add('visited');
+        item.title = spot.name;
+
+        item.innerHTML =
+            '<img src="' + spot.icon + '" alt="' + spot.name +
+            '" onerror="this.style.display=\'none\'">' +
+            '<span class="thumb-check">✓</span>';
+
+        item.addEventListener('click', function () {
+            onSpotClick(spot);
+        });
+
+        barEl.appendChild(item);
+    });
+
+    updateBottomBarActive();
+}
+
+/* 将离地图中心最近的景点缩略图标记为高亮 */
+function updateBottomBarActive() {
+    if (!map) return;
+    var center = map.getCenter();
+    var minDist = Infinity;
+    var closestId = null;
+
+    spots.forEach(function (spot) {
+        var dist = Math.pow(spot.position[0] - center.lng, 2) +
+                   Math.pow(spot.position[1] - center.lat, 2);
+        if (dist < minDist) {
+            minDist = dist;
+            closestId = spot.id;
+        }
+    });
+
+    var items = document.querySelectorAll('#bottom-bar .thumb-item');
+    items.forEach(function (item, idx) {
+        item.classList.toggle('active', spots[idx].id === closestId);
+    });
+}
+
+/* 地图移动/缩放完成回调 */
+function onMapMoveEnd() {
+    updateBottomBarActive();
+    updateInfoWindowPosition();
+}
+
+/* ==================== 十、图层切换（标准 / 卫星 / 暗色） ==================== */
+var currentLayer = 'normal';
+var satelliteLayer = null;
+
+function switchLayer(layerType, btnEl) {
+    if (currentLayer === layerType) return;
+    currentLayer = layerType;
+
+    // 更新按钮 active 状态
+    document.querySelectorAll('#layer-switcher button').forEach(function (b) {
+        b.classList.remove('active');
+    });
+    if (btnEl) btnEl.classList.add('active');
+
+    switch (layerType) {
+        case 'normal':
+            map.setMapStyle('amap://styles/normal');
+            if (satelliteLayer) satelliteLayer.setMap(null);
+            break;
+        case 'satellite':
+            if (!satelliteLayer) {
+                satelliteLayer = new AMap.TileLayer.Satellite();
+            }
+            satelliteLayer.setMap(map);
+            break;
+        case 'dark':
+            if (satelliteLayer) satelliteLayer.setMap(null);
+            map.setMapStyle('amap://styles/dark');
+            break;
+    }
+}
+
+/* ==================== 十一、回到总览 ==================== */
+function flyToOverview() {
+    closeInfoWindow();
+    deactivateAllMarkers();
+    map.setZoomAndCenter(17, [114.415757, 23.03699], true, 1000);
+}
+
+/* ==================== 十二、初始化流程 ==================== */
+function init() {
+    loadVisited();
+    initMap();
+    initAllMarkers();
+    initTourRoute();
+    refreshSpotCards();
+    refreshBottomBar();
+    updateProgressUI();
+
+    // 移动端默认折叠侧边栏
+    if (window.innerWidth < 768) {
+        sidebarCollapsed = true;
+        document.getElementById('sidebar').classList.add('collapsed');
+    }
+}
+
+// 启动
+init();
+
+// 卸载时清理定时器
+window.addEventListener('beforeunload', function () {
+    if (dashOffsetAnimId) clearInterval(dashOffsetAnimId);
+});
+</script>
+</body>
+</html>
